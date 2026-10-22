@@ -546,6 +546,28 @@
       { question: "What force keeps planets in orbit around the Sun?", answers: ["Magnetism", "Friction", "Gravity", "Solar wind"], correct: 2, fact: "Gravity holds our solar system together." }
     ];
 
+    function shuffle(items) {
+      for (let index = items.length - 1; index > 0; index -= 1) {
+        const swapIndex = Math.floor(Math.random() * (index + 1));
+        [items[index], items[swapIndex]] = [items[swapIndex], items[index]];
+      }
+      return items;
+    }
+
+    function createAttempt() {
+      return shuffle(questions.map((item) => {
+        const answers = shuffle(item.answers.map((answer, index) => ({
+          answer,
+          isCorrect: index === item.correct
+        })));
+        return {
+          ...item,
+          answers: answers.map(({ answer }) => answer),
+          correct: answers.findIndex(({ isCorrect }) => isCorrect)
+        };
+      }));
+    }
+
     const questionEl = document.querySelector("#question");
     const answersEl = document.querySelector("#answers");
     const feedbackEl = document.querySelector("#feedback");
@@ -556,21 +578,23 @@
     const nextButton = document.querySelector("#next");
     const quizEl = document.querySelector("#quiz");
     const resultEl = document.querySelector("#result");
+    let attemptQuestions = createAttempt();
     let current = 0;
     let score = 0;
     let answered = false;
 
     function renderQuestion() {
-      const item = questions[current];
+      const item = attemptQuestions[current];
       answered = false;
       questionEl.textContent = item.question;
-      countEl.textContent = `Question ${current + 1} of ${questions.length}`;
+      countEl.textContent = `Question ${current + 1} of ${attemptQuestions.length}`;
+      progressTrack.setAttribute("aria-valuemax", String(attemptQuestions.length));
       progressTrack.setAttribute("aria-valuenow", String(current));
-      progressFill.style.width = `${(current / questions.length) * 100}%`;
+      progressFill.style.width = `${(current / attemptQuestions.length) * 100}%`;
       feedbackEl.textContent = "";
       feedbackEl.className = "feedback";
       nextButton.hidden = true;
-      nextButton.innerHTML = current === questions.length - 1
+      nextButton.innerHTML = current === attemptQuestions.length - 1
         ? 'See results <span aria-hidden="true">→</span>'
         : 'Next question <span aria-hidden="true">→</span>';
       answersEl.replaceChildren();
@@ -590,7 +614,7 @@
     function selectAnswer(index) {
       if (answered) return;
       answered = true;
-      const item = questions[current];
+      const item = attemptQuestions[current];
       const isCorrect = index === item.correct;
       const buttons = [...answersEl.querySelectorAll(".answer")];
       buttons.forEach((button) => {
@@ -609,13 +633,13 @@
         feedbackEl.classList.add("is-wrong");
       }
       progressTrack.setAttribute("aria-valuenow", String(current + 1));
-      progressFill.style.width = `${((current + 1) / questions.length) * 100}%`;
+      progressFill.style.width = `${((current + 1) / attemptQuestions.length) * 100}%`;
       nextButton.hidden = false;
       nextButton.focus();
     }
 
     function showResults() {
-      const percent = score / questions.length;
+      const percent = score / attemptQuestions.length;
       const reaction = percent === 1 ? "🏆" : score >= 8 ? "🎉" : percent >= .4 ? "🧑‍🚀" : "🌱";
       const title = percent === 1 ? "Out of this world!" : score >= 8 ? "Stellar work!" : percent >= .4 ? "Nice exploring!" : "Keep reaching for the stars!";
       const copy = percent === 1
@@ -633,7 +657,7 @@
         <p class="eyebrow">Mission complete</p>
         ${score >= 8 ? '<p class="celebration-label">Outstanding mission</p>' : ""}
         <h1 id="result-title" tabindex="-1">${title}</h1>
-        <p class="result-score">${score}<span style="font-size:18px;color:var(--muted);font-weight:650"> / ${questions.length}</span></p>
+        <p class="result-score">${score}<span style="font-size:18px;color:var(--muted);font-weight:650"> / ${attemptQuestions.length}</span></p>
         <p class="result-copy">${copy}</p>
         <button class="next-button" id="restart" type="button">Play again <span aria-hidden="true">↻</span></button>
       `;
@@ -642,6 +666,7 @@
     }
 
     function restart() {
+      attemptQuestions = createAttempt();
       current = 0;
       score = 0;
       scoreEl.textContent = "0";
@@ -652,7 +677,7 @@
     }
 
     nextButton.addEventListener("click", () => {
-      if (current === questions.length - 1) {
+      if (current === attemptQuestions.length - 1) {
         showResults();
       } else {
         current += 1;
